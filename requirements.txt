@@ -1,0 +1,6 @@
+sqlalchemy == 2.0.31
+python-dotenv == 1.0.1
+pandas == 2.1.4
+numpy == 1.25.2
+matplotlib == 3.8.4
+opencv-python == 4.10.0
