@@ -37,11 +37,11 @@ import os
 import argparse
 
 metric_dict = {
-    'shoulder_angle_x': {
-        'label': 'Scap Load',
+    'rear_elbow_angle_z': {
+        'label': 'Wrist Pronation',
         'measurment': 'deg',
         'table': 'joint_angles',
-        'video_path1': r"C:\Users\logan.kniss\Downloads\animation_1071_2_1741489570.mp4",
+        'video_path1': r"W:\ArizonaFacility\2025\03\11\Verdugo_A_103757_HittingAssessment_ArizonaFacility_11-Mar-25_1741722199_H7_18_107.1.mp4",
         'video_path2': None
     },
     # 'pelvis_angle_y': {
@@ -167,7 +167,7 @@ def main():
     
     # session_trial = args['session_trial']
     # video_path = args['video_path']
-    session_trial = "1071_2"
+    session_trial = "2550_18"
     # video_path = r"C:\Users\logan.kniss\Downloads\animation_2226_1_1740526960.mp4"
     
     # Get the desktop path for output files
@@ -180,26 +180,26 @@ def main():
     
     # PITCHING
     # Initialize database connection
-    engine = get_db_engine(biomech_db)
+    # engine = get_db_engine(biomech_db)
     # first_frame, last_frame, df, metadata = get_pitching_data(session_trial, engine)
     # fps, trimmed_video_path = trim_video(video_path, first_frame, last_frame, desktop_path, metadata)
     # animation_path = animate_elbow_force(df, first_frame, last_frame, fps, desktop_path, metadata)
     
     # HITTING
     # Initialize database connection
-    # engine = get_db_engine(hitting_db)
+    engine = get_db_engine(hitting_db)
     for metric in metric_dict:
-        first_frame, last_frame, df, metadata = get_data('pitching', session_trial, engine, metric_dict[metric]['table'])
+        first_frame, last_frame, df, metadata = get_data('hitting', session_trial, engine, metric_dict[metric]['table'])
         fps, trimmed_video_path = trim_video(metric_dict[metric]['video_path1'], first_frame, last_frame, desktop_path, metadata)
         print(f'{metric} trimmed video saved to {trimmed_video_path}')
         if metric_dict[metric]['video_path2'] is not None:
             _, trimmed_video_path2 = trim_video(metric_dict[metric]['video_path2'], first_frame, last_frame, desktop_path, metadata)
             print(f'{metric} trimmed video saved to {trimmed_video_path2}')
         # fps, trimmed_video_path = trim_video(video_path, first_frame, last_frame, desktop_path, metadata)
-        animation_path = animate_graph('pitching', df, first_frame, last_frame, fps, desktop_path, metadata, metric, metric_dict[metric]['label'], metric_dict[metric]['measurment'])
+        animation_path = animate_graph('hitting', df, first_frame, last_frame, fps, desktop_path, metadata, metric, metric_dict[metric]['label'], metric_dict[metric]['measurment'])
         print(f'{metric} animation saved to {animation_path}')
         # Create final composite video
-        create_final_video('pitching', animation_path, trimmed_video_path, metric_dict[metric], desktop_path, metadata)
+        create_final_video('hitting', animation_path, trimmed_video_path, metric_dict[metric], desktop_path, metadata)
         # create_final_video(animation_path, trimmed_video_path2, metric_dict[metric], desktop_path, metadata)
 
 if __name__ == "__main__":

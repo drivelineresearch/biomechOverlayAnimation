@@ -709,13 +709,42 @@ def create_final_video(mode: str, animation_path: str, video_path: str, metric, 
     name = metadata["name"]
     date = metadata["date"]
     label = metric['label']
-    try:
-        if '-side' in video_path:
-            view = 'side'
-        elif '-front' in video_path:
-            view = 'front'
-    except:
+    
+    if '-side' in video_path:
+        view = 'side'
+    elif '-front' in video_path:
+        view = 'front'
+    else:
         view = None
+
+    # Get video dimensions using ffprobe
+    def get_video_dimensions(video_path):
+        cmd = [
+            'ffprobe', 
+            '-v', 'error',
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=width,height',
+            '-of', 'csv=p=0',
+            video_path
+        ]
+        try:
+            output = subprocess.check_output(cmd).decode('utf-8').strip().split(',')
+            return int(output[0]), int(output[1])
+        except Exception as e:
+            print(f"Error getting video dimensions: {e}")
+            return None, None
+
+    # Get dimensions of both videos
+    video_width, video_height = get_video_dimensions(video_path)
+    anim_width, anim_height = get_video_dimensions(animation_path)
+    
+    print(f"Video dimensions: {video_width}x{video_height}")
+    print(f"Animation dimensions: {anim_width}x{anim_height}")
+    
+    # Target dimensions for the final output
+    target_width = 1920  # Total width
+    target_height = 1080  # Total height
+    individual_width = target_width // 2  # Width for each video
 
     if mode == 'hitting':
         bat_speed_mph = metadata["bat_speed_mph"]
@@ -727,38 +756,36 @@ def create_final_video(mode: str, animation_path: str, video_path: str, metric, 
     elif mode == 'pitching':    
         pitch_speed_mph = metadata["pitch_speed_mph"]
         output_path = os.path.join(desktop_path, f'final_{label}_video_{name}_{date}_{pitch_speed_mph}.mp4')
-    # ffmpeg cmd for normal video
-    # ffmpeg_command = (
-    #     f'ffmpeg -i "{video_path}" -i "{animation_path}" '
-    #     f'-filter_complex "'
-    #     f'[0:v]scale=1920:480:force_original_aspect_ratio=decrease,pad=1920:480:(ow-iw)/2:(oh-ih)/2[v0];'  # Scale video (shorter)
-    #     f'[1:v]scale=1920:600:force_original_aspect_ratio=decrease,pad=1920:600:(ow-iw)/2:(oh-ih)/2[v1];'  # Scale plot (taller)
-    #     f'[v0][v1]vstack=inputs=2:shortest=1,setsar=1" '  # Stack them vertically with no padding
-    #     f'-c:v libx264 '
-    #     f'-preset slower '
-    #     f'-crf 18 '
-    #     f'-maxrate 10M '
-    #     f'-bufsize 20M '
-    #     f'-pix_fmt yuv420p '
-    #     f'"{output_path}"'
-    # )
-    # split video and plot
-    ffmpeg_command = (
-        f'ffmpeg -i "{video_path}" -i "{animation_path}" '
-        f'-filter_complex "'
-        f'[0:v]scale=960:-1:force_original_aspect_ratio=1,pad=960:540:(ow-iw)/2:(oh-ih)/2[v0];'  # Scale width only, auto-height
-        f'[1:v]scale=960:-1:force_original_aspect_ratio=1,pad=960:540:(ow-iw)/2:(oh-ih)/2[v1];'  # Scale width only, auto-height
-        f'[v0][v1]hstack" '  # Simple horizontal stack
-        f'-c:v libx264 '
-        f'-preset slower '
-        f'-crf 18 '
-        f'-maxrate 10M '
-        f'-bufsize 20M '
-        f'-y '  # Force overwrite output file if it exists
-        f'"{output_path}"'
+
+    # Create complex filter for scaling and padding both videos
+    filter_complex = (
+        f'[0:v]scale={individual_width}:-1:force_original_aspect_ratio=1,'
+        f'pad={individual_width}:{target_height}:(ow-iw)/2:(oh-ih)/2[v0];'
+        f'[1:v]scale={individual_width}:-1:force_original_aspect_ratio=1,'
+        f'pad={individual_width}:{target_height}:(ow-iw)/2:(oh-ih)/2[v1];'
+        f'[v0][v1]hstack'
     )
+
+    # Build ffmpeg command
+    ffmpeg_command = [
+        'ffmpeg',
+        '-i', video_path,
+        '-i', animation_path,
+        '-filter_complex', filter_complex,
+        '-c:v', 'libx264',
+        '-preset', 'slower',
+        '-crf', '18',
+        '-maxrate', '10M',
+        '-bufsize', '20M',
+        '-y',  # Force overwrite output file if it exists
+        output_path
+    ]
         
-    print(f'Running ffmpeg command: {ffmpeg_command}')
-    subprocess.run(ffmpeg_command, shell=True)
-    print(f'Final video saved to {output_path}')
+    print(f'Running ffmpeg command: {" ".join(ffmpeg_command)}')
+    try:
+        subprocess.run(ffmpeg_command, check=True)
+        print(f'Final video saved to {output_path}')
+    except subprocess.CalledProcessError as e:
+        print(f"Error running ffmpeg: {e}")
+        print(f"FFmpeg stderr: {e.stderr if hasattr(e, 'stderr') else 'No error output available'}")
 ## CREATE FINAL VIDEO ##
